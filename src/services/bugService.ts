@@ -1,6 +1,8 @@
 import config, { NODE_ENV } from '../config';
 import { Storage } from '@google-cloud/storage';
 import { Logger } from 'winston';
+import { promises as fs } from 'fs';
+import path from 'path';
 
 interface UploadOption {
   skipTimestamp?: boolean;
@@ -33,7 +35,14 @@ export const uploadDebugImage = async (
 ) => {
   try {
     if (NODE_ENV === 'development') {
-      // TODO add disk based file saving
+      // ponytail: dev-only debug aid, mirrors the GCP naming so it's a drop-in
+      // once GCP_MISC_BUCKET is configured — delete if that TODO ever gets done properly.
+      const bot = botId ?? 'bot';
+      const now = opts?.skipTimestamp ? '' : `-${new Date().toISOString()}`;
+      const localPath = path.join('assets', 'screenshots', `${userId}-${bot}-${fileName}${now}.png`);
+      await fs.mkdir(path.dirname(localPath), { recursive: true });
+      await fs.writeFile(localPath, buffer);
+      logger.info(`Debug image saved locally (dev): ${localPath}`, userId);
       return;
     }
     logger.info('Begin upload Debug Image', userId);

@@ -195,19 +195,34 @@ export class GoogleMeetBot extends MeetBotBase {
           joinRequestAttempt,
           maxJoinRequestAttempts
         });
-        await retryActionWithWait(
-          'Waiting for the input field',
-          async () => await this.page.locator(nameInputSelector).first().waitFor({ state: 'visible', timeout: 10000 }),
-          this._logger,
-          3,
-          15000,
-          async () => {
-            await uploadDebugImage(await this.page.screenshot({ type: 'png', fullPage: true }), 'text-input-field-wait', userId, this._logger, botId);
-          }
-        );
+        // ponytail: a signed-in Google account (chrome-cdp + persistent profile) never
+        // shows this name input — that's an anonymous-guest-only prompt. Upstream treated
+        // its absence as fatal; here we just skip the fill and fall through to the
+        // "Ask to join"/"Join now" button click, which works the same either way.
+        let nameInputFound = true;
+        try {
+          await retryActionWithWait(
+            'Waiting for the input field',
+            async () => await this.page.locator(nameInputSelector).first().waitFor({ state: 'visible', timeout: 10000 }),
+            this._logger,
+            3,
+            15000,
+            async () => {
+              await uploadDebugImage(await this.page.screenshot({ type: 'png', fullPage: true }), 'text-input-field-wait', userId, this._logger, botId);
+            }
+          );
+        } catch (nameInputError) {
+          nameInputFound = false;
+          this._logger.info('Name input field not found — assuming a signed-in Google account, skipping name entry...', {
+            joinRequestAttempt,
+            maxJoinRequestAttempts
+          });
+        }
 
-        this._logger.info('Filling the input field with the name...');
-        await this.page.locator(nameInputSelector).first().fill(displayName);
+        if (nameInputFound) {
+          this._logger.info('Filling the input field with the name...');
+          await this.page.locator(nameInputSelector).first().fill(displayName);
+        }
         
         await retryActionWithWait(
           'Clicking the "Ask to join" button',
@@ -220,6 +235,11 @@ export class GoogleMeetBot extends MeetBotBase {
               'Teilnahme erbitten',
               'Jetzt teilnehmen',
               'Trotzdem teilnehmen',
+              // ponytail: bot@agenciamutuo.tech's Meet UI is pt-BR (account locale) —
+              // add more languages here if other signed-in bot accounts use them.
+              'Pedir para participar',
+              'Participar agora',
+              'Participar mesmo assim',
             ];
 
             let buttonClicked = false;
@@ -372,7 +392,8 @@ export class GoogleMeetBot extends MeetBotBase {
             }
 
             try {
-              callButtonElement = await this.page.locator('button[aria-label="Leave call"], button[aria-label="Anruf verlassen"]').first().isVisible({ timeout: 500 }).catch(() => false);
+              // ponytail: "Sair da chamada" (pt-BR) confirmed live from bot@agenciamutuo.tech's Meet session.
+              callButtonElement = await this.page.locator('button[aria-label="Leave call"], button[aria-label="Anruf verlassen"], button[aria-label="Sair da chamada"]').first().isVisible({ timeout: 500 }).catch(() => false);
             } catch(e) {
               this._logger.error(
                 'wait error', { error: e }
@@ -425,12 +446,14 @@ export class GoogleMeetBot extends MeetBotBase {
                           bodyText.includes('people in the call') ||
                           bodyText.includes('Du nimmst an diesem Anruf teil') ||
                           bodyText.includes('Der Anruf hat einen weiteren Teilnehmer') ||
-                          bodyText.includes('Teilnehmer sind beigetreten')) {
+                          bodyText.includes('Teilnehmer sind beigetreten') ||
+                          // ponytail: exact pt-BR string confirmed live (bot@agenciamutuo.tech)
+                          bodyText.includes('Você está participando da chamada')) {
                         return true;
                       }
 
                       // Fallback: Check for Leave call button which indicates we're in a call
-                      const leaveCallButton = document.querySelector('button[aria-label="Leave call"], button[aria-label="Anruf verlassen"]');
+                      const leaveCallButton = document.querySelector('button[aria-label="Leave call"], button[aria-label="Anruf verlassen"], button[aria-label="Sair da chamada"]');
                       if (leaveCallButton) {
                         // If we have Leave call button AND no lobby mode text, we're likely in the call
                         const hasLobbyText = bodyText.includes('Asking to join') ||
