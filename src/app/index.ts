@@ -7,6 +7,7 @@ import microsoftRouter from './microsoft';
 import zoomRouter from './zoom';
 import { globalJobStore } from '../lib/globalJobStore';
 import { RedisConsumerService } from '../connect/RedisConsumerService';
+import { verifyJoinAuth } from '../middleware/verifyJoinAuth';
 
 const app = express();
 
@@ -65,6 +66,7 @@ app.get('/debug', async (req, res, next) => {
   res.status(200).send({});
 });
 
+app.use(['/google', '/microsoft', '/zoom'], verifyJoinAuth);
 app.use('/google', googleRouter);
 app.use('/microsoft', microsoftRouter);
 app.use('/zoom', zoomRouter);
