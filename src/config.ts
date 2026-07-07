@@ -77,6 +77,13 @@ export default {
   activateInactivityDetectionAfter: process.env.INACTIVITY_DETECTION_START_DELAY_MINUTES ? Number(process.env.INACTIVITY_DETECTION_START_DELAY_MINUTES) :  1,
   loneParticipantExitDelaySeconds: process.env.LONE_PARTICIPANT_EXIT_DELAY_SECONDS ? Number(process.env.LONE_PARTICIPANT_EXIT_DELAY_SECONDS) : 10,
   serviceKey: process.env.SCREENAPP_BACKEND_SERVICE_API_KEY,
+  // Segurança (mútuo, 07/07): bearerToken em POST /:provider/join só era
+  // checado como não-vazio, nunca validado contra nada — qualquer request
+  // com JSON válido fazia o bot entrar em qualquer reunião. Vazio/não
+  // configurado = desligado (comportamento antigo preservado até setar de
+  // verdade — evita quebrar deploys existentes antes do meta-ads mandar o
+  // valor real). Ver src/middleware/verifyJoinAuth.ts.
+  joinAuthToken: process.env.JOIN_AUTH_TOKEN,
   joinWaitTime: process.env.JOIN_WAIT_TIME_MINUTES ? Number(process.env.JOIN_WAIT_TIME_MINUTES) : 10,
   // Number of retries for transient errors (not applied to WaitingAtLobbyRetryError)
   retryCount: process.env.RETRY_COUNT ? Number(process.env.RETRY_COUNT) : 2,
