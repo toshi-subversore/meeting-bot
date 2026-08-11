@@ -1235,7 +1235,7 @@ export class GoogleMeetBot extends MeetBotBase {
 
                 // Check for basic Google Meet UI elements
                 const hasMeetElements = document.querySelector('button[aria-label="People"], button[aria-label^="People -"], button[aria-label="Personen"], button[aria-label^="Personen -"]') !== null ||
-                                      document.querySelector('button[aria-label="Leave call"], button[aria-label="Anruf verlassen"]') !== null;
+                                      document.querySelector('button[aria-label="Leave call"], button[aria-label="Anruf verlassen"], button[aria-label="Sair da chamada"]') !== null;
 
                 if (!hasMeetElements) {
                   console.warn('Google Meet UI elements not found - page may have changed state');
